@@ -5,6 +5,9 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "Components/SphereComponent.h"
 #include "UObject/ConstructorHelpers.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
+#include "CollidingPawnMovementComponent.h"
 
 // Sets default values
 ACollidingPawn::ACollidingPawn()
@@ -41,8 +44,20 @@ ACollidingPawn::ACollidingPawn()
 	}
 
 	// 스프링 암
+	USpringArmComponent* SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraAttachmentArm"));
+	SpringArm->SetupAttachment(RootComponent);
+	SpringArm->SetRelativeRotation(FRotator(-45.0f, 0.0f, 0.0f));
+	SpringArm->TargetArmLength = 400.0f;
+	SpringArm->bEnableCameraLag = true;
+	SpringArm->CameraLagSpeed = 3.0f;
 
 	// 카메라
+	UCameraComponent* Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("ActualCamera"));
+	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+
+	// (이걸 마지막 순서로) 콜라이딩 폰 무브먼트 컴포넌트 인스턴스를 생성하고, 루트를 업데이트 한다.
+	OurMovementComponent = CreateDefaultSubobject<UCollidingPawnMovementComponent>(TEXT("CustomMovementComponent"));
+	OurMovementComponent->UpdatedComponent = RootComponent;
 
 	// 컨트롤 (빙의)
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
@@ -67,5 +82,46 @@ void ACollidingPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	InputComponent->BindAction("ParticleToggle", IE_Pressed, this, &ACollidingPawn::ParticleToggle);
+
+	InputComponent->BindAxis("MoveForward", this, &ACollidingPawn::MoveForward);
+	InputComponent->BindAxis("MoveRight", this, &ACollidingPawn::MoveRight);
+	InputComponent->BindAxis("Turn", this, &ACollidingPawn::Turn);
+}
+
+UPawnMovementComponent* ACollidingPawn::GetMovementComponent() const
+{
+	return OurMovementComponent;
+}
+
+void ACollidingPawn::MoveForward(float AxisValue)
+{
+	if (OurMovementComponent && (OurMovementComponent->UpdatedComponent == RootComponent))
+	{
+		OurMovementComponent->AddInputVector(GetActorForwardVector() * AxisValue);
+	}
+}
+
+void ACollidingPawn::MoveRight(float AxisValue)
+{
+	if (OurMovementComponent && (OurMovementComponent->UpdatedComponent == RootComponent))
+	{
+		OurMovementComponent->AddInputVector(GetActorRightVector() * AxisValue);
+	}
+}
+
+void ACollidingPawn::Turn(float AxisValue)
+{
+	FRotator NewRotation = GetActorRotation();
+	NewRotation.Yaw += AxisValue;
+	SetActorRotation(NewRotation);
+}
+
+void ACollidingPawn::ParticleToggle()
+{
+	if (OurPartivleSystem && OurPartivleSystem->Template)
+	{
+		OurPartivleSystem->ToggleActive();
+	}
 }
 
