@@ -26,7 +26,21 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	// 언리얼 엔진의 다른 클래스가 Pawn 에 사용 중인 UPawnMovementComponent 에 접근할 때, 사용하는 함수
+	virtual UPawnMovementComponent* GetMovementComponent() const override;
+
 public:
 	class UParticleSystemComponent* OurPartivleSystem;
+
+	class UCollidingPawnMovementComponent* OurMovementComponent;
+
+public:
+	void MoveForward(float AxisValue);
+
+	void MoveRight(float AxisValue);
+
+	void Turn(float AxisValue);
+
+	void ParticleToggle();
 
 };
