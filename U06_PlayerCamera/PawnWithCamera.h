@@ -42,6 +42,10 @@ public:
 	FVector2D CameraInput;
 	float ZoomFactor;		// 줌 인/아웃의 정도
 	bool bZoomingIn;		// 줌 인/아웃의 여부
+	
+	// 추가
+	float SpeedFactor;
+	float CameraPitch;		// 카메라의 상하 방향 회전값
 
 public:
 	// 입력 함수
@@ -51,5 +55,13 @@ public:
 	void YawCamera(float AxisValue);
 	void ZoomIn();
 	void ZoomOut();
+
+	// 추가
+	void StartSprint();
+	void StopSprint();
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float CameraAutoRotationSpeed = 3.0f;	// 보간 속도
 
 };
