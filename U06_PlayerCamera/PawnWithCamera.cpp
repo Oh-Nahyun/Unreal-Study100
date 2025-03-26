@@ -30,6 +30,9 @@ APawnWithCamera::APawnWithCamera()
 
 	// 컨트롤
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
+
+	// 달리기 추가 초기화
+	SpeedFactor = 1.0f;
 }
 
 // Called when the game starts or when spawned
@@ -73,14 +76,40 @@ void APawnWithCamera::Tick(float DeltaTime)
 		SpringArmComp->SetWorldRotation(NewRotation);
 	}
 	
-	// 액터의 이동 처리
+	// #01. 액터의 이동 처리
+	//if (!MovementInput.IsZero())
+	//{
+	//	// 달리기 추가
+	//	//MovementInput = MovementInput.GetSafeNormal() * 100.0f;
+	//	MovementInput = MovementInput.GetSafeNormal() * 100.0f * SpeedFactor;
+	// 
+	//	FVector NewLocation = GetActorLocation();
+	//	NewLocation += GetActorForwardVector() * MovementInput.X * DeltaTime;
+	//	NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
+	//	SetActorLocation(NewLocation);
+	//}
+
+	// #02. 액터의 이동 처리 + 카메라 추가 처리 (자동 회전)
+	FVector DesiredForward = GetActorForwardVector();
 	if (!MovementInput.IsZero())
 	{
-		MovementInput = MovementInput.GetSafeNormal() * 100.0f;
+		MovementInput = MovementInput.GetSafeNormal() * 100.0f * SpeedFactor;
+		DesiredForward = FVector(MovementInput.X, MovementInput.Y, 0.0f);
 		FVector NewLocation = GetActorLocation();
 		NewLocation += GetActorForwardVector() * MovementInput.X * DeltaTime;
 		NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
 		SetActorLocation(NewLocation);
+	}
+
+	{
+		FRotator CurrentRotation = SpringArmComp->GetComponentRotation();
+		FRotator DesiredRotation = DesiredForward.Rotation();
+
+		// #03. 추가
+		DesiredRotation.Pitch = CameraPitch;
+
+		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, DesiredRotation, DeltaTime, CameraAutoRotationSpeed);
+		SpringArmComp->SetWorldRotation(NewRotation);
 	}
 }
 
@@ -91,6 +120,10 @@ void APawnWithCamera::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 	InputComponent->BindAction("ZoomIn",  IE_Pressed,  this, &APawnWithCamera::ZoomIn);
 	InputComponent->BindAction("ZoomOut", IE_Released, this, &APawnWithCamera::ZoomOut);
+
+	// 달리기 추가
+	InputComponent->BindAction("Sprint", IE_Pressed, this, &APawnWithCamera::StartSprint);
+	InputComponent->BindAction("Sprint", IE_Released, this, &APawnWithCamera::StopSprint);
 
 	InputComponent->BindAxis("MoveForward", this, &APawnWithCamera::MoveForward);
 	InputComponent->BindAxis("MoveRight",   this, &APawnWithCamera::MoveRight);
@@ -111,6 +144,9 @@ void APawnWithCamera::MoveRight(float AxisValue)
 void APawnWithCamera::PitchCamera(float AxisValue)
 {
 	CameraInput.Y = AxisValue;
+
+	// 추가
+	CameraPitch = FMath::Clamp(CameraPitch + AxisValue, -80.0f, -15.0f);
 }
 
 void APawnWithCamera::YawCamera(float AxisValue)
@@ -126,5 +162,15 @@ void APawnWithCamera::ZoomIn()
 void APawnWithCamera::ZoomOut()
 {
 	bZoomingIn = false;
+}
+
+void APawnWithCamera::StartSprint()
+{
+	SpeedFactor = 3.0f;
+}
+
+void APawnWithCamera::StopSprint()
+{
+	SpeedFactor = 1.0f;
 }
 
